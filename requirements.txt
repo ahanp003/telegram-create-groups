@@ -1,0 +1,19 @@
+# Telegram Client
+pyrogram==2.0.106
+# TgCrypto — опционально (ускоряет Pyrogram). На Windows часто не собирается без C++ SDK.
+# Установить отдельно при наличии компилятора: pip install TgCrypto
+
+# FastAPI и зависимости
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Утилиты
+python-dotenv==1.0.0
+
+# Для форм и загрузки
+python-multipart==0.0.6
+
+# Опционально для продакшена
+# gunicorn==21.2.0
