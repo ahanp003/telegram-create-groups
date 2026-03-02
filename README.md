@@ -1,290 +1,208 @@
 # Telegram Group Creator API
 
-🚀 Профессиональный FastAPI сервис для автоматического создания Telegram групп с ботами и пользователями.
+Профессиональный FastAPI сервис для автоматического создания Telegram групп и управления несколькими аккаунтами.
 
-## 📋 Возможности
+## Возможности
 
-- ✅ Создание супергрупп (мегагрупп) в Telegram
-- ✅ Автоматическое добавление ботов с правами администратора
-- ✅ Приглашение пользователей в группу
-- ✅ Генерация бессрочных ссылок-приглашений
-- ✅ Поддержка тестовых серверов Telegram
-- ✅ Детальные отчеты о результатах
-- ✅ Полная типизация и валидация данных
-- ✅ Профессиональное логирование
+- Создание супергрупп (мегагрупп) в Telegram
+- Автоматическое добавление ботов с правами администратора
+- Приглашение пользователей в группу
+- Генерация бессрочных ссылок-приглашений
+- **Мультиаккаунт** — несколько Telegram-аккаунтов, выбор аккаунта при создании группы
+- **Регистрация аккаунтов через API** — send-code → verify-code → (при необходимости) verify-2fa
+- Защита API ключом (заголовок `X-API-Key`)
+- Поддержка тестовых серверов Telegram
+- Продакшн-структура: разнесённые роутеры, сервисы, сессии, конфиг
 
-## 🛠️ Установка
+## Установка
 
-### 1. Установите зависимости
+### 1. Зависимости
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Настройте переменные окружения
+### 2. Переменные окружения
 
-Создайте файл `.env`:
+Скопируйте `.env.example` в `.env` и заполните:
 
 ```env
-API_ID=ваш_api_id
+API_ID=ваш_api_id          # https://my.telegram.org/apps
 API_HASH=ваш_api_hash
-PHONE_NUMBER=ваш_номер_телефона
-TEST_MODE=False  # True для тестовых серверов
+API_KEY=секретный_ключ     # для заголовка X-API-Key
+TEST_MODE=False
+SESSIONS_DIR=sessions_data
+HOST=0.0.0.0
+PORT=3579
+LOG_LEVEL=INFO
 ```
 
-### 3. Первый запуск (авторизация)
+### 3. Регистрация первого аккаунта
 
-При первом запуске потребуется ввести код подтверждения из Telegram:
+Аккаунты регистрируются через API (интерактивный ввод кода не нужен):
+
+1. **Отправить код на телефон**
+   ```http
+   POST /api/v1/auth/send-code
+   X-API-Key: ваш_api_key
+   Content-Type: application/json
+
+   {"phone_number": "+79001234567"}
+   ```
+   В ответе — `phone_code_hash` и `session_id`.
+
+2. **Ввести код из Telegram**
+   ```http
+   POST /api/v1/auth/verify-code
+   X-API-Key: ваш_api_key
+   Content-Type: application/json
+
+   {
+     "phone_number": "+79001234567",
+     "phone_code_hash": "<из send-code>",
+     "code": "12345"
+   }
+   ```
+   Если включена 2FA, в ответе будет `requires_2fa: true`.
+
+3. **При 2FA — отправить пароль**
+   ```http
+   POST /api/v1/auth/verify-2fa
+   X-API-Key: ваш_api_key
+   Content-Type: application/json
+
+   {"phone_number": "+79001234567", "password": "ваш_2fa_пароль"}
+   ```
+
+После успешной регистрации сессия сохраняется в `sessions_data/`.
+
+## Запуск
 
 ```bash
-python telegram_group_creator_api.py
+python run.py
 ```
 
-После успешной авторизации сессия сохранится, и код больше не потребуется.
+Сервер: **http://localhost:3579**  
+Документация: **http://localhost:3579/docs**
 
-## 🚀 Запуск
+### Доступ с интернета через туннель
+
+#### Localtunnel
+
+1. Установить (нужен Node.js): `npm install -g localtunnel`
+2. Запустить приложение: `python run.py`
+3. В другом терминале:
+   ```bash
+   lt --port 3579
+   ```
+   Если туннель «висит» или не открывается, укажите хост явно:
+   ```bash
+   lt --port 3579 --host https://server.loca.lt
+   ```
+
+**Важно:** при открытии URL в браузере localtunnel показывает страницу «напоминания». Чтобы запросы доходили до вашего API, добавляйте заголовок **`Bypass-Tunnel-Reminder: true`** (в Postman, curl, скриптах):
 
 ```bash
-python telegram_group_creator_api.py
+# Bash / cmd (на Windows лучше вызвать curl.exe)
+curl.exe -H "Bypass-Tunnel-Reminder: true" https://ваш-поддомен.loca.lt/health
 ```
 
-Сервер запустится на: **http://localhost:3579**
+```powershell
+# PowerShell
+Invoke-WebRequest -Uri "https://ваш-поддомен.loca.lt/health" -Headers @{"Bypass-Tunnel-Reminder"="true"}
+```
 
-## 📚 Документация API
+Без этого заголовка браузер или клиент получает HTML-страницу localtunnel, а не ответ вашего приложения — из-за этого кажется, что «не загружается».
 
-После запуска сервера документация доступна по адресам:
+**Если видите «503 - Tunnel Unavailable»:** туннель оборвался или не запущен. Убедитесь, что в отдельном терминале всё ещё работает `lt --port 3579` (окно не закрыто), приложение `python run.py` слушает порт 3579, затем перезапустите `lt`. Публичные серверы localtunnel часто роняют соединение; для стабильной работы лучше использовать ngrok ниже.
 
-- **Swagger UI**: http://localhost:3579/docs
-- **ReDoc**: http://localhost:3579/redoc
+#### Альтернатива: ngrok
 
-## 🔌 API Эндпоинты
+Стабильнее для постоянного доступа (нужна бесплатная регистрация на [ngrok.com](https://ngrok.com)):
 
-### 1. Проверка работы сервиса
+```bash
+ngrok http 3579
+```
+
+Публичный URL будет в выводе; страницы-посредника нет, API доступен сразу.
+
+## API (кратко)
+
+Эндпоинты без ключа (для проверки и health-check):
+
+- `GET /` — статус сервиса
+- `GET /health` — здоровье (telegram_connected, accounts_count)
+- `GET /accounts` — список зарегистрированных аккаунтов (без ключа)
+
+Эндпоинты с заголовком **X-API-Key**:
+
+- `POST /api/v1/auth/send-code` — отправить код на телефон
+- `POST /api/v1/auth/verify-code` — подтвердить код
+- `POST /api/v1/auth/verify-2fa` — ввести 2FA-пароль
+- `GET /api/v1/auth/accounts` — список аккаунтов
+- `DELETE /api/v1/auth/accounts/{phone}` — удалить аккаунт
+- `POST /api/v1/groups/create` — создать группу (указать `phone_number` аккаунта)
+
+### Создание группы
 
 ```http
-GET /
-```
-
-**Ответ:**
-```json
-{
-  "service": "Telegram Group Creator API",
-  "version": "1.0.0",
-  "status": "running",
-  "test_mode": false
-}
-```
-
-### 2. Проверка здоровья
-
-```http
-GET /health
-```
-
-**Ответ:**
-```json
-{
-  "status": "healthy",
-  "telegram_connected": true,
-  "test_mode": false
-}
-```
-
-### 3. Создание группы
-
-```http
-POST /api/v1/create-group
+POST /api/v1/groups/create
+X-API-Key: ваш_api_key
 Content-Type: application/json
 ```
 
-**Тело запроса:**
 ```json
 {
+  "phone_number": "+79001234567",
   "group_name": "Моя новая группа",
   "bot_username": "@test_chat_all_bot",
-  "users": ["@meteor2000", "@user2"],
+  "users": ["@user1", "@user2"],
   "leave_after": false
 }
 ```
 
-**Успешный ответ (201 Created):**
-```json
-{
-  "success": true,
-  "group_id": -1002200104615,
-  "group_name": "Моя новая группа",
-  "invite_link": "https://t.me/+AbCdEfGhIjKlMnO",
-  "bot": {
-    "username": "test_chat_all_bot",
-    "added": true,
-    "promoted": true,
-    "error": null
-  },
-  "users": [
-    {
-      "username": "meteor2000",
-      "added": true,
-      "error": null
-    }
-  ],
-  "error": null,
-  "timestamp": "2024-01-01T12:00:00.000000"
-}
-```
+Успешный ответ (201): `success`, `group_id`, `group_name`, `invite_link`, `bot`, `users`, `timestamp`.
 
-**Ответ при ошибке (500):**
-```json
-{
-  "success": false,
-  "group_id": null,
-  "group_name": null,
-  "invite_link": null,
-  "bot": null,
-  "users": [],
-  "error": "Описание ошибки",
-  "timestamp": "2024-01-01T12:00:00.000000"
-}
-```
-
-## 📝 Примеры использования
-
-### Python (requests)
-
-```python
-import requests
-
-url = "http://localhost:3579/api/v1/create-group"
-data = {
-    "group_name": "Test Group",
-    "bot_username": "@my_bot",
-    "users": ["@user1", "@user2"],
-    "leave_after": False
-}
-
-response = requests.post(url, json=data)
-result = response.json()
-
-print(f"Группа создана: {result['success']}")
-print(f"Ссылка-приглашение: {result['invite_link']}")
-```
-
-### cURL
-
-```bash
-curl -X POST "http://localhost:3579/api/v1/create-group" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "group_name": "Test Group",
-    "bot_username": "@my_bot",
-    "users": ["@user1", "@user2"],
-    "leave_after": false
-  }'
-```
-
-### JavaScript (fetch)
-
-```javascript
-const response = await fetch('http://localhost:3579/api/v1/create-group', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    group_name: 'Test Group',
-    bot_username: '@my_bot',
-    users: ['@user1', '@user2'],
-    leave_after: false
-  })
-});
-
-const result = await response.json();
-console.log('Ссылка-приглашение:', result.invite_link);
-```
-
-## 🔒 Безопасность
-
-### ⚠️ ВАЖНО!
-
-1. **Никогда не коммитьте** файлы `.session` в git
-2. **Храните в секрете** файл `.env` с API ключами
-3. **Не публикуйте** API на публичных серверах без аутентификации
-4. **Ограничьте доступ** к API (используйте firewall, VPN, API keys)
-
-### Рекомендации для продакшена
-
-1. Добавьте аутентификацию (API keys, JWT tokens)
-2. Используйте HTTPS
-3. Настройте rate limiting
-4. Используйте Gunicorn вместо Uvicorn
-5. Настройте мониторинг и алерты
-6. Используйте Docker для изоляции
-
-## 🐛 Обработка ошибок
-
-API возвращает детальную информацию об ошибках:
-
-### Типичные ошибки при добавлении пользователей:
-
-| Ошибка | Описание | Решение |
-|--------|----------|---------|
-| `USER_PRIVACY` | Настройки приватности пользователя | Пользователь должен изменить настройки или добавить вас в контакты |
-| `USER_NOT_MUTUAL_CONTACT` | Не во взаимных контактах | Добавьте друг друга в контакты |
-| `USER_ALREADY_PARTICIPANT` | Уже в группе | Не является ошибкой, пользователь уже добавлен |
-| `FloodWait` | Rate limit | API автоматически ждет и повторяет запрос |
-
-## 📊 Логирование
-
-Все операции логируются в консоль с timestamp и уровнем важности:
+## Структура проекта
 
 ```
-2024-01-01 12:00:00 - __main__ - INFO - ✅ Подключение к Telegram успешно!
-2024-01-01 12:00:01 - __main__ - INFO - Создание группы 'Test Group'...
-2024-01-01 12:00:03 - __main__ - INFO - ✅ Группа создана: Test Group (ID: -1002200104615)
+app/
+├── main.py           # FastAPI, lifespan, роутеры
+├── config.py         # pydantic-settings
+├── dependencies.py   # DI (session_manager, auth_service, group_service)
+├── core/
+│   ├── logging.py
+│   ├── security.py   # проверка X-API-Key
+│   └── exceptions.py
+├── schemas/          # Pydantic (auth, groups, common)
+├── routers/          # health, auth, groups
+├── services/         # auth_service, group_service
+└── sessions/
+    └── manager.py    # мультиаккаунт, pending_auth с TTL
+run.py                # точка входа (uvicorn)
 ```
 
-## 🧪 Тестовые серверы
+## Безопасность
 
-Для тестирования установите в `.env`:
+- Не коммитьте `.session`, `sessions_data/` и `.env`
+- API ключ обязателен для `/api/v1/*` (кроме перечисленных выше)
+- В продакшене: HTTPS, ограничение доступа по сети, мониторинг
 
-```env
-TEST_MODE=True
-```
+## Ошибки при добавлении пользователей
 
-**Важно:** На тестовых серверах создается отдельная сессия (`session_name_test.session`), не влияющая на продакшн.
+| Ошибка | Решение |
+|--------|---------|
+| USER_PRIVACY | Пользователь должен разрешить добавление или добавить вас в контакты |
+| USER_NOT_MUTUAL_CONTACT | Добавьте друг друга в контакты |
+| USER_ALREADY_PARTICIPANT | Уже в группе (успех) |
+| FloodWait | API ждёт и повторяет запрос |
 
-## 🏗️ Архитектура
+## Тестовые серверы
 
-```
-telegram_group_creator_api.py
-├── Models (Pydantic)
-│   ├── GroupCreationRequest
-│   ├── GroupCreationResponse
-│   ├── BotAddResult
-│   └── UserAddResult
-├── Business Logic
-│   ├── create_supergroup()
-│   ├── create_invite_link()
-│   ├── add_bot_to_group()
-│   ├── add_user_to_group()
-│   └── create_telegram_group()
-└── API Endpoints (FastAPI)
-    ├── GET /
-    ├── GET /health
-    └── POST /api/v1/create-group
-```
+В `.env`: `TEST_MODE=True`. Сессии тестовых аккаунтов хранятся в том же `sessions_data/` с отдельными именами.
 
-## 🔧 Технологический стек
+## Стек
 
-- **FastAPI** - Современный, быстрый веб-фреймворк
-- **Pyrogram** - Элегантная библиотека для Telegram API
-- **Pydantic** - Валидация данных и типизация
-- **Uvicorn** - ASGI сервер
-- **Python 3.10+** - Современный Python с type hints
-
-## 📄 Лицензия
-
-Проект использует библиотеки с открытым исходным кодом:
-- Pyrogram: LGPL-3.0
-- FastAPI: MIT
-
-
+- FastAPI, Uvicorn, Pydantic, pydantic-settings
+- Pyrogram, TgCrypto
+- Python 3.10+

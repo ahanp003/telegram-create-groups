@@ -1,6 +1,7 @@
 # Telegram Sessions (ВАЖНО!)
 *.session
 *.session-journal
+sessions_data/
 
 # Environment Variables
 .env
