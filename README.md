@@ -156,7 +156,10 @@ Content-Type: application/json
   "phone_number": "+79001234567",
   "group_name": "Моя новая группа",
   "bot_username": "@test_chat_all_bot",
-  "users": ["@user1", "@user2"],
+  "users": [
+    {"user_name": "@user1", "transfer_ownership": false},
+    {"user_name": "@user2", "transfer_ownership": true}
+  ],
   "leave_after": false
 }
 ```

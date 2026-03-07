@@ -68,7 +68,10 @@ class GroupCreationRequest(BaseModel):
                 "session_id": "550e8400-e29b-41d4-a716-446655440000",
                 "group_name": "My New Group",
                 "bot_username": "@test_chat_all_bot",
-                "users": ["@user1", "@user2"],
+                "users": [
+                {"user_name": "@user1", "transfer_ownership": False},
+                {"user_name": "@user2", "transfer_ownership": True}
+            ],
                 "leave_after": False,
                 "photo_url": "https://example.com/group-avatar.png",
             }
