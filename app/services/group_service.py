@@ -1,6 +1,8 @@
 """Group creation business logic (migrated from legacy API)."""
 
 import asyncio
+import urllib.request
+from io import BytesIO
 from typing import Optional
 
 from pyrogram import Client
@@ -49,6 +51,29 @@ class GroupService:
         except Exception as e:
             logger.warning("Не удалось получить информацию о чате: %s", e)
         return chat_id, chat_title
+
+    async def _set_chat_photo_from_url(
+        self, client: Client, chat_id: int, photo_url: str
+    ) -> bool:
+        """Download image from URL and set as group chat photo. Returns True on success."""
+        try:
+            def _download() -> bytes:
+                req = urllib.request.Request(photo_url, headers={"User-Agent": "TelegramClient/1.0"})
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    return resp.read()
+
+            data = await asyncio.to_thread(_download)
+            if not data or len(data) > 10 * 1024 * 1024:  # 10 MB limit
+                logger.warning("Фото по URL пустое или слишком большое")
+                return False
+            buf = BytesIO(data)
+            buf.name = "photo.png"
+            await client.set_chat_photo(chat_id=chat_id, photo=buf)
+            logger.info("Аватар группы установлен из URL: %s", photo_url)
+            return True
+        except Exception as e:
+            logger.warning("Не удалось установить аватар группы из URL %s: %s", photo_url, e)
+            return False
 
     async def create_invite_link(self, client: Client, chat_id: int) -> Optional[str]:
         """Create a permanent invite link for the group."""
@@ -188,6 +213,8 @@ class GroupService:
             chat_id, chat_title = await self.create_supergroup(client, request.group_name)
             response.group_id = chat_id
             response.group_name = chat_title
+            if request.photo_url:
+                await self._set_chat_photo_from_url(client, chat_id, request.photo_url)
             response.invite_link = await self.create_invite_link(client, chat_id)
             response.bot = await self.add_bot_to_group(
                 client, chat_id, request.bot_username

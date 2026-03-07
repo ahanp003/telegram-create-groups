@@ -50,6 +50,10 @@ class GroupCreationRequest(BaseModel):
         default_factory=list, description="List of users to add (with optional transfer_ownership)"
     )
     leave_after: bool = Field(False, description="Leave group after creation")
+    photo_url: Optional[str] = Field(
+        None,
+        description="URL of image to set as group avatar (e.g. https://example.com/image.png)",
+    )
 
     @field_validator("bot_username")
     @classmethod
@@ -66,6 +70,7 @@ class GroupCreationRequest(BaseModel):
                 "bot_username": "@test_chat_all_bot",
                 "users": ["@user1", "@user2"],
                 "leave_after": False,
+                "photo_url": "https://example.com/group-avatar.png",
             }
         }
     }
