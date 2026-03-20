@@ -207,7 +207,7 @@ class GroupService:
     async def create_group(
         self, client: Client, request: GroupCreationRequest
     ) -> GroupCreationResponse:
-        """Create group with bot and users. Client must be connected."""
+        """Create group with bots and users. Client must be connected."""
         response = GroupCreationResponse(success=False)
         try:
             chat_id, chat_title = await self.create_supergroup(client, request.group_name)
@@ -216,9 +216,13 @@ class GroupService:
             if request.photo_url:
                 await self._set_chat_photo_from_url(client, chat_id, request.photo_url)
             response.invite_link = await self.create_invite_link(client, chat_id)
-            response.bot = await self.add_bot_to_group(
-                client, chat_id, request.bot_username
-            )
+            bot_results = []
+            for bot_username in request.bot_usernames:
+                bot_results.append(
+                    await self.add_bot_to_group(client, chat_id, bot_username)
+                )
+            response.bots = bot_results
+            response.bot = bot_results[0] if bot_results else None
             user_results = []
             for user_spec in request.users:
                 user_results.append(
@@ -229,7 +233,8 @@ class GroupService:
                 await self.leave_group(client, chat_id)
             response.success = True
             if not (
-                response.bot.added and all(u.added for u in user_results)
+                all(b.added for b in bot_results)
+                and all(u.added for u in user_results)
             ):
                 logger.warning("Группа создана, но не все участники добавлены")
             else:

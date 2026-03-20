@@ -155,7 +155,7 @@ Content-Type: application/json
 {
   "phone_number": "+79001234567",
   "group_name": "Моя новая группа",
-  "bot_username": "@test_chat_all_bot",
+  "bot_usernames": ["@bot_1", "@bot_2"],
   "users": [
     {"user_name": "@user1", "transfer_ownership": false},
     {"user_name": "@user2", "transfer_ownership": true}
@@ -164,7 +164,9 @@ Content-Type: application/json
 }
 ```
 
-Успешный ответ (201): `success`, `group_id`, `group_name`, `invite_link`, `bot`, `users`, `timestamp`.
+Успешный ответ (201): `success`, `group_id`, `group_name`, `invite_link`, `bots`, `users`, `timestamp`.
+
+Для обратной совместимости можно передавать старое поле `bot_username` (один бот), но рекомендуется использовать `bot_usernames`.
 
 ## Структура проекта
 
